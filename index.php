@@ -50,12 +50,12 @@ include 'config/dbcon.php';
                         $steps = [
                             1 => ['Basic Information', 'Server details, IP, platform', 'fas fa-info-circle', '#4361ee', 'step1.php'],
                             2 => ['Operating System', 'OS type, patches, users', 'fab fa-windows', '#06d6a0', 'step2.php'],
-                            3 => ['Data Security', 'Authorization, encryption', 'fas fa-database', '#7209b7', 'step3-data.php'],
-                            4 => ['Network Security', 'Firewall, IPS, IDS', 'fas fa-network-wired', '#f72585', 'step4-network.php'],
-                            5 => ['Policy & SOP', 'Documentation, response', 'fas fa-file-alt', '#fb8b24', 'step5-policy.php'],
-                            6 => ['Physical Security', 'Access, CCTV, fire', 'fas fa-lock', '#9a8c98', 'step6-physical.php'],
-                            7 => ['Backup & Recovery', 'Backup frequency, offsite', 'fas fa-cloud-upload-alt', '#e63946', 'step7-backup.php'],
-                            8 => ['Administration', 'Admin policies, logs', 'fas fa-users-cog', '#2b9f8c', 'step8-admin.php']
+                            3 => ['Data Security', 'Authorization, encryption', 'fas fa-database', '#7209b7', 'step3.php'],
+                            4 => ['Network Security', 'Firewall, IPS, IDS', 'fas fa-network-wired', '#f72585', 'step4.php'],
+                            5 => ['Policy & SOP', 'Documentation, response', 'fas fa-file-alt', '#fb8b24', 'step5.php'],
+                            6 => ['Physical Security', 'Access, CCTV, fire', 'fas fa-lock', '#9a8c98', 'step6.php'],
+                            7 => ['Backup & Recovery', 'Backup frequency, offsite', 'fas fa-cloud-upload-alt', '#e63946', 'step7.php'],
+                            8 => ['Administration', 'Admin policies, logs', 'fas fa-users-cog', '#2b9f8c', 'step8.php']
                         ];
                         
                         foreach ($steps as $num => $step):

@@ -69,7 +69,7 @@ include('supporter/permissions.php');
                   <p>Server Management</p>
               </a>
           </li>
-        <?php endif; ?>
+        <?php endif; ?> 
       </ul>
     </nav>
   </div>

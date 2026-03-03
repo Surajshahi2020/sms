@@ -5,6 +5,18 @@ include 'includes/header.php';
 include 'includes/topbar.php';
 include 'includes/sidebar.php';
 include 'config/dbcon.php';
+
+// Fetch existing data if editing
+$server_id = isset($_GET['server_id']) ? $_GET['server_id'] : 0;
+$server_data = [];
+if ($server_id) {
+    $query = "SELECT * FROM servers WHERE id = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $server_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $server_data = $result->fetch_assoc();
+}
 ?>
 
 <!-- Content Wrapper -->
@@ -16,9 +28,9 @@ include 'config/dbcon.php';
                 <div class="col-sm-6">
                     <h2 class="m-0">
                         <i class="fas fa-info-circle mr-2" style="color: #4361ee;"></i>
-                        Step 1: Basic Information
+                        1. Basic Info
                     </h2>
-                    <p class="text-muted mt-1">Enter server basic information</p>
+                    <p class="text-muted mt-1">Server basic information</p>
                 </div>
                 <div class="col-sm-6 text-right">
                     <a href="server-checklist.php" class="btn btn-outline-secondary">
@@ -35,86 +47,144 @@ include 'config/dbcon.php';
             <div class="card">
                 <div class="card-body">
                     <form method="POST" action="save-step1.php" id="serverForm">
+                        <input type="hidden" name="server_id" value="<?php echo $server_id; ?>">
+                        
                         <!-- Server Block -->
-                        <div class="server-block p-4 border rounded">
-                            <!-- Server Name -->
-                            <div class="form-group row mb-3">
-                                <label class="col-sm-3 col-form-label font-weight-bold">A. Server Name (FQDN):</label>
+                        <div class="security-block p-4 border rounded">
+                            
+                            <!-- A. Server Name (FQDN) -->
+                            <div class="form-group row mb-4">
+                                <label class="col-sm-3 col-form-label font-weight-bold">
+                                    A. Server Name (FQDN):
+                                </label>
                                 <div class="col-sm-9">
                                     <input type="text" class="form-control" name="server_name" 
+                                           value="<?php echo htmlspecialchars($server_data['server_name'] ?? ''); ?>"
                                            placeholder="e.g., server01.company.com.np" required>
+                                    <div class="mt-2 text-primary">
+                                        <small>
+                                            <i class="fas fa-book-open mr-1"></i>
+                                            Reference: साइबर सुरक्षा नीति, पेज नं. १४, बुँदा ३४ को (ख)
+                                        </small>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Server Platform -->
-                            <div class="form-group row mb-3">
-                                <label class="col-sm-3 col-form-label font-weight-bold">B. Server Platform:</label>
+                            <!-- B. Server Platform (Physical/Logical) -->
+                            <div class="form-group row mb-4">
+                                <label class="col-sm-3 col-form-label font-weight-bold">
+                                    B. Server Platform (Physical/Logical):
+                                </label>
                                 <div class="col-sm-9">
-                                    <select class="form-control" name="platform">
-                                        <option value="">Select Platform</option>
-                                        <option value="Physical">Physical</option>
-                                        <option value="Virtual">Virtual</option>
-                                        <option value="Logical">Logical</option>
-                                    </select>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="custom-control custom-radio">
+                                                <input type="radio" class="custom-control-input" name="platform" id="platformPhysical" value="Physical" <?php echo (isset($server_data['platform']) && $server_data['platform'] == 'Physical') ? 'checked' : ''; ?> required>
+                                                <label class="custom-control-label" for="platformPhysical">Physical</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="custom-control custom-radio">
+                                                <input type="radio" class="custom-control-input" name="platform" id="platformLogical" value="Logical" <?php echo (isset($server_data['platform']) && $server_data['platform'] == 'Logical') ? 'checked' : ''; ?>>
+                                                <label class="custom-control-label" for="platformLogical">Logical</label>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Purpose -->
-                            <div class="form-group row mb-3">
-                                <label class="col-sm-3 col-form-label font-weight-bold">C. Purpose:</label>
+                            <!-- C. Purpose -->
+                            <div class="form-group row mb-4">
+                                <label class="col-sm-3 col-form-label font-weight-bold">
+                                    C. Purpose:
+                                </label>
                                 <div class="col-sm-9">
                                     <input type="text" class="form-control" name="purpose" 
-                                           placeholder="e.g., Web Server, Database Server">
+                                           value="<?php echo htmlspecialchars($server_data['purpose'] ?? ''); ?>"
+                                           placeholder="e.g., Web Server, Database Server, Application Server">
                                 </div>
                             </div>
 
-                            <!-- Running Services -->
-                            <div class="form-group row mb-3">
-                                <label class="col-sm-3 col-form-label font-weight-bold">D. Running Services:</label>
+                            <!-- D. Running Services -->
+                            <div class="form-group row mb-4">
+                                <label class="col-sm-3 col-form-label font-weight-bold">
+                                    D. Running Services:
+                                </label>
                                 <div class="col-sm-9">
                                     <textarea class="form-control" name="services" rows="3" 
-                                              placeholder="List all running services (one per line)&#10;e.g.:&#10;Apache&#10;MySQL&#10;PHP&#10;FTP"></textarea>
+                                              placeholder="List all running services (one per line)&#10;e.g.:&#10;Apache HTTP Server&#10;MySQL Database&#10;PHP-FPM&#10;OpenSSH"><?php echo htmlspecialchars($server_data['services'] ?? ''); ?></textarea>
                                 </div>
                             </div>
 
-                            <!-- Public IP -->
-                            <div class="form-group row mb-3">
-                                <label class="col-sm-3 col-form-label font-weight-bold">E1. Public IP:</label>
+                            <!-- E. IP Address -->
+                            <div class="form-group row mb-4">
+                                <label class="col-sm-3 col-form-label font-weight-bold">
+                                    E. IP Address:
+                                </label>
                                 <div class="col-sm-9">
-                                    <input type="text" class="form-control" name="public_ip" 
-                                           placeholder="e.g., 202.51.80.100">
+                                    
+                                    <!-- I. Public -->
+                                    <div class="p-3 bg-light rounded mb-3">
+                                        <label class="font-weight-bold">I. Public IP:</label>
+                                        <input type="text" class="form-control" name="public_ip" 
+                                               value="<?php echo htmlspecialchars($server_data['public_ip'] ?? ''); ?>"
+                                               placeholder="e.g., 202.51.80.100">
+                                    </div>
+
+                                    <!-- II. Private -->
+                                    <div class="p-3 bg-light rounded">
+                                        <label class="font-weight-bold">II. Private IP:</label>
+                                        <input type="text" class="form-control" name="private_ip" 
+                                               value="<?php echo htmlspecialchars($server_data['private_ip'] ?? ''); ?>"
+                                               placeholder="e.g., 10.0.0.5, 192.168.1.10">
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Private IP -->
-                            <div class="form-group row mb-3">
-                                <label class="col-sm-3 col-form-label font-weight-bold">E2. Private IP:</label>
-                                <div class="col-sm-9">
-                                    <input type="text" class="form-control" name="private_ip" 
-                                           placeholder="e.g., 10.0.0.5">
-                                </div>
-                            </div>
-
-                            <!-- MAC Address -->
-                            <div class="form-group row mb-3">
-                                <label class="col-sm-3 col-form-label font-weight-bold">F. MAC Address:</label>
+                            <!-- F. MAC Address -->
+                            <div class="form-group row mb-4">
+                                <label class="col-sm-3 col-form-label font-weight-bold">
+                                    F. MAC Address:
+                                </label>
                                 <div class="col-sm-9">
                                     <input type="text" class="form-control" name="mac_address" 
+                                           value="<?php echo htmlspecialchars($server_data['mac_address'] ?? ''); ?>"
                                            placeholder="e.g., 00:1A:2B:3C:4D:5E">
                                 </div>
                             </div>
 
-                            <!-- Priority -->
-                            <div class="form-group row mb-3">
-                                <label class="col-sm-3 col-form-label font-weight-bold">G. Server Priority:</label>
+                            <!-- G. Priority of Server -->
+                            <div class="form-group row mb-4">
+                                <label class="col-sm-3 col-form-label font-weight-bold">
+                                    G. Priority of Server:
+                                </label>
                                 <div class="col-sm-9">
-                                    <select class="form-control" name="priority">
-                                        <option value="">Select Priority</option>
-                                        <option value="Critical">Critical</option>
-                                        <option value="High">High</option>
-                                        <option value="Medium">Medium</option>
-                                        <option value="Low">Low</option>
-                                    </select>
+                                    <div class="row">
+                                        <div class="col-md-3 mb-2">
+                                            <div class="custom-control custom-radio">
+                                                <input type="radio" class="custom-control-input" name="priority" id="priorityCritical" value="Critical" <?php echo (isset($server_data['priority']) && $server_data['priority'] == 'Critical') ? 'checked' : ''; ?>>
+                                                <label class="custom-control-label" for="priorityCritical">Critical</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <div class="custom-control custom-radio">
+                                                <input type="radio" class="custom-control-input" name="priority" id="priorityHigh" value="High" <?php echo (isset($server_data['priority']) && $server_data['priority'] == 'High') ? 'checked' : ''; ?>>
+                                                <label class="custom-control-label" for="priorityHigh">High</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <div class="custom-control custom-radio">
+                                                <input type="radio" class="custom-control-input" name="priority" id="priorityMedium" value="Medium" <?php echo (isset($server_data['priority']) && $server_data['priority'] == 'Medium') ? 'checked' : ''; ?>>
+                                                <label class="custom-control-label" for="priorityMedium">Medium</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <div class="custom-control custom-radio">
+                                                <input type="radio" class="custom-control-input" name="priority" id="priorityLow" value="Low" <?php echo (isset($server_data['priority']) && $server_data['priority'] == 'Low') ? 'checked' : ''; ?>>
+                                                <label class="custom-control-label" for="priorityLow">Low</label>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -123,17 +193,7 @@ include 'config/dbcon.php';
                                 <label class="col-sm-3 col-form-label font-weight-bold text-primary">Remarks:</label>
                                 <div class="col-sm-9">
                                     <textarea class="form-control" name="remarks" rows="2" 
-                                              placeholder="Any remarks or notes for this server"></textarea>
-                                </div>
-                            </div>
-
-                            <!-- Reference -->
-                            <div class="form-group row">
-                                <div class="col-sm-12">
-                                    <small class="text-primary">
-                                        <i class="fas fa-book-open mr-1"></i>
-                                        Reference: साइबर सुरक्षा नीति, पेज १४, बुँदा ३४(ख)
-                                    </small>
+                                              placeholder="Any additional remarks or notes for this server"><?php echo htmlspecialchars($server_data['remarks'] ?? ''); ?></textarea>
                                 </div>
                             </div>
                         </div>
@@ -146,8 +206,14 @@ include 'config/dbcon.php';
                                         <i class="fas fa-undo mr-1"></i> Reset Form
                                     </button>
                                     <div>
+                                        <button type="button" class="btn btn-info px-4 mr-2" onclick="window.location.href='index.php'">
+                                            <i class="fas fa-arrow-left mr-1"></i> Previous Step
+                                        </button>
                                         <button type="submit" name="save_step1" class="btn btn-primary px-5">
-                                            <i class="fas fa-save mr-2"></i> Save Information
+                                            <i class="fas fa-save mr-2"></i> Save Basic Info
+                                        </button>
+                                        <button type="button" class="btn btn-info px-4 ml-2" onclick="window.location.href='step2.php<?php echo $server_id ? '?server_id='.$server_id : ''; ?>'">
+                                            Next Step <i class="fas fa-arrow-right ml-1"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -161,13 +227,27 @@ include 'config/dbcon.php';
 </div>
 
 <style>
-.row {
-    margin-left: 0;
-    margin-right: 0;
+.security-block {
+    background: #ffffff;
+    transition: all 0.3s ease;
+    border: 1px solid #e9ecef !important;
+}
+
+.security-block:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border-color: #4361ee !important;
 }
 
 .form-group.row {
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.form-group.row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
 }
 
 .col-form-label {
@@ -175,18 +255,15 @@ include 'config/dbcon.php';
     color: #1e293b;
 }
 
-.server-block {
-    background: #ffffff;
-    transition: all 0.3s ease;
-    border: 1px solid #e9ecef !important;
+.bg-light {
+    background-color: #f8f9fa !important;
 }
 
-.server-block:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    border-color: #4361ee !important;
+.bg-light.rounded {
+    border-left: 3px solid #4361ee;
 }
 
-.form-control, .form-select {
+.form-control, .custom-select {
     border: 1px solid #e2e8f0;
     border-radius: 8px;
     padding: 8px 12px;
@@ -194,13 +271,13 @@ include 'config/dbcon.php';
     transition: all 0.2s;
 }
 
-.form-control:focus, .form-select:focus {
+.form-control:focus, .custom-select:focus {
     border-color: #4361ee;
     box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
 }
 
-textarea.form-control {
-    resize: vertical;
+.custom-control-label {
+    cursor: pointer;
 }
 
 .btn-primary {
@@ -216,7 +293,7 @@ textarea.form-control {
 /* Responsive */
 @media (max-width: 768px) {
     .form-group.row {
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
     }
     
     .col-sm-3, .col-sm-9 {

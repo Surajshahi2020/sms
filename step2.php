@@ -16,7 +16,7 @@ include 'config/dbcon.php';
                 <div class="col-sm-8">
                     <h2 class="m-0">
                         <i class="fas fa-info-circle mr-2" style="color: #4361ee;"></i>
-                        Step 2: Operating Systems and Servers
+                        2. Operating Systems and Servers
                     </h2>
                     <p class="text-muted mt-1">Enter operating system and server details</p>
                 </div>
@@ -419,8 +419,14 @@ include 'config/dbcon.php';
                                         <i class="fas fa-undo mr-1"></i> Reset Form
                                     </button>
                                     <div>
-                                        <button type="submit" name="save_step2" class="btn btn-success px-5">
-                                            <i class="fas fa-save mr-2"></i> Save Information
+                                        <button type="button" class="btn btn-info px-4 mr-2" onclick="window.location.href='step1.php'">
+                                            <i class="fas fa-arrow-left mr-1"></i> Previous Step
+                                        </button>
+                                        <button type="submit" name="save_step6" class="btn btn-primary px-5">
+                                            <i class="fas fa-save mr-2"></i> Save Operating System
+                                        </button>
+                                        <button type="button" class="btn btn-info px-4 ml-2" onclick="window.location.href='step3.php'">
+                                            Next Step <i class="fas fa-arrow-right ml-1"></i>
                                         </button>
                                     </div>
                                 </div>
