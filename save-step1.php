@@ -1,6 +1,5 @@
 <?php
 // save-step1.php
-session_start();
 include 'includes/authentication.php';
 include 'config/dbcon.php';
 
@@ -28,7 +27,6 @@ if (isset($_POST['save']) || isset($_POST['save_and_next'])) {
     $private_ip = mysqli_real_escape_string($con, trim($_POST['private_ip'] ?? ''));
     $mac_address = mysqli_real_escape_string($con, trim($_POST['mac_address'] ?? ''));
     $priority = mysqli_real_escape_string($con, $_POST['priority'] ?? '');
-    $reference_option = mysqli_real_escape_string($con, $_POST['reference_option'] ?? '');
     $remarks = mysqli_real_escape_string($con, trim($_POST['remarks'] ?? ''));
     
     // Validate required fields
@@ -55,7 +53,7 @@ if (isset($_POST['save']) || isset($_POST['save_and_next'])) {
         // Check if server with same name already exists for this user
         if ($server_id == 0) {
             // For new entries, check if server name already exists for this user
-            $check_query = "SELECT id FROM servers WHERE server_name = ? AND user_id = ?";
+            $check_query = "SELECT id FROM basic_info WHERE server_name = ? AND user_id = ?";
             $check_stmt = mysqli_prepare($con, $check_query);
             mysqli_stmt_bind_param($check_stmt, "si", $server_name, $user_id);
             mysqli_stmt_execute($check_stmt);
@@ -73,7 +71,7 @@ if (isset($_POST['save']) || isset($_POST['save_and_next'])) {
         // Now handle insert or update based on whether we have a server_id
         if ($server_id > 0) {
             // First verify that this server belongs to the user (for security)
-            $check_query = "SELECT id FROM servers WHERE id = ? AND user_id = ?";
+            $check_query = "SELECT id FROM basic_info WHERE id = ? AND user_id = ?";
             $check_stmt = mysqli_prepare($con, $check_query);
             mysqli_stmt_bind_param($check_stmt, "ii", $server_id, $user_id);
             mysqli_stmt_execute($check_stmt);
@@ -85,7 +83,7 @@ if (isset($_POST['save']) || isset($_POST['save_and_next'])) {
             mysqli_stmt_close($check_stmt);
             
             // Update existing record
-            $query = "UPDATE servers SET 
+            $query = "UPDATE basic_info SET 
                         server_name = ?,
                         platform = ?,
                         purpose = ?,
@@ -94,13 +92,12 @@ if (isset($_POST['save']) || isset($_POST['save_and_next'])) {
                         private_ip = ?,
                         mac_address = ?,
                         priority = ?,
-                        reference_option = ?,
                         remarks = ?,
                         updated_at = NOW()
                       WHERE id = ? AND user_id = ?";
             
             $stmt = mysqli_prepare($con, $query);
-            mysqli_stmt_bind_param($stmt, "ssssssssssii", 
+            mysqli_stmt_bind_param($stmt, "sssssssssii", 
                 $server_name, 
                 $platform, 
                 $purpose, 
@@ -109,7 +106,6 @@ if (isset($_POST['save']) || isset($_POST['save_and_next'])) {
                 $private_ip, 
                 $mac_address, 
                 $priority, 
-                $reference_option, 
                 $remarks,
                 $server_id,
                 $user_id
@@ -119,7 +115,7 @@ if (isset($_POST['save']) || isset($_POST['save_and_next'])) {
             
         } else {
             // Insert new record
-            $query = "INSERT INTO servers (
+            $query = "INSERT INTO basic_info (
                         user_id,
                         server_name, 
                         platform, 
@@ -129,15 +125,14 @@ if (isset($_POST['save']) || isset($_POST['save_and_next'])) {
                         private_ip, 
                         mac_address, 
                         priority, 
-                        reference_option, 
                         remarks,
                         status,
                         created_at,
                         updated_at
-                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', NOW(), NOW())";
+                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', NOW(), NOW())";
             
             $stmt = mysqli_prepare($con, $query);
-            mysqli_stmt_bind_param($stmt, "issssssssss", 
+            mysqli_stmt_bind_param($stmt, "isssssssss", 
                 $user_id,
                 $server_name, 
                 $platform, 
@@ -147,7 +142,6 @@ if (isset($_POST['save']) || isset($_POST['save_and_next'])) {
                 $private_ip, 
                 $mac_address, 
                 $priority, 
-                $reference_option, 
                 $remarks
             );
             

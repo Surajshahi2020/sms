@@ -2,7 +2,7 @@
 RewriteEngine On
 
 # Set the base directory (adjust if your project is in a subfolder)
-RewriteBase /imsoft/
+RewriteBase /sms/
 
 # If the request is empty (just /imsoft/), serve login.php. ^ means start of the URL path. $ means end of the URL path. L means Last rule → stop checking other rewrite rules after this one.
 RewriteRule ^$ login.php [L]

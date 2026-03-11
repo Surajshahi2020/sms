@@ -15,7 +15,7 @@ $server_data = [];
 // Fetch all servers for this user (for dropdown)
 $servers_list = [];
 if ($user_id > 0) {
-    $servers_query = "SELECT id, server_name FROM servers WHERE user_id = ? ORDER BY server_name";
+    $servers_query = "SELECT id, server_name FROM basic_info WHERE user_id = ? ORDER BY server_name";
     $servers_stmt = $con->prepare($servers_query);
     $servers_stmt->bind_param("i", $user_id);
     $servers_stmt->execute();
@@ -29,7 +29,7 @@ if ($user_id > 0) {
 // If a specific server is selected, fetch its details
 if ($server_id > 0) {
     // Make sure the server belongs to the logged-in user
-    $query = "SELECT * FROM servers WHERE id = ? AND user_id = ?";
+    $query = "SELECT * FROM basic_info WHERE id = ? AND user_id = ?";
     $stmt = $con->prepare($query);
     $stmt->bind_param("ii", $server_id, $user_id);
     $stmt->execute();
@@ -58,6 +58,7 @@ if ($server_id == 0 && !empty($servers_list)) {
     <!-- Content Header -->
     <div class="content-header">
         <div class="container-fluid">
+            <?php include 'message.php'; ?>
             <div class="row mb-2">
                 <div class="col-sm-6">
                     <h2 class="m-0">
@@ -317,22 +318,6 @@ if ($server_id == 0 && !empty($servers_list)) {
                                 </div>
                             </div>
 
-                            <!-- Simple Reference Selection with 4 Options -->
-                            <div class="form-group row mb-4">
-                                <label class="col-sm-3 col-form-label font-weight-bold text-primary">
-                                    <i class="fas fa-book-open mr-1"></i> Reference:
-                                </label>
-                                <div class="col-sm-9">
-                                    <select class="form-control" name="reference_option" id="referenceOption">
-                                        <option value="">-- Select Reference Option --</option>
-                                        <option value="ref1" <?php echo (isset($server_data['reference_option']) && $server_data['reference_option'] == 'ref1') ? 'selected' : ''; ?>>Reference 1: साइबर सुरक्षा नीति, पेज १४, बुँदा ३४ को (ख)</option>
-                                        <option value="ref2" <?php echo (isset($server_data['reference_option']) && $server_data['reference_option'] == 'ref2') ? 'selected' : ''; ?>>Reference 2: साइबर सुरक्षा नीति, पेज १६, बुँदा ३८ को (क)</option>
-                                        <option value="ref3" <?php echo (isset($server_data['reference_option']) && $server_data['reference_option'] == 'ref3') ? 'selected' : ''; ?>>Reference 3: सूचना प्रविधि निर्देशिका, २०७७, पेज २३, बुँदा ५.२</option>
-                                        <option value="ref4" <?php echo (isset($server_data['reference_option']) && $server_data['reference_option'] == 'ref4') ? 'selected' : ''; ?>>Reference 4: सूचना प्रविधि निर्देशिका, २०७७, पेज २८, बुँदा ६.४</option>
-                                    </select>
-                                </div>
-                            </div>
-
                             <!-- Remarks -->
                             <div class="form-group row mb-2">
                                 <label class="col-sm-3 col-form-label font-weight-bold text-primary">Remarks:</label>
@@ -354,6 +339,11 @@ if ($server_id == 0 && !empty($servers_list)) {
                                         <button type="button" class="btn btn-info px-4 mr-2" onclick="window.location.href='dashboard.php'">
                                             <i class="fas fa-arrow-left mr-1"></i> Previous Step
                                         </button>
+                                        <?php if ($server_id > 0): ?>
+                                        <button type="button" class="btn btn-danger px-4 mr-2" id="deleteServerBtn">
+                                            <i class="fas fa-trash-alt mr-1"></i> Delete Server
+                                        </button>
+                                        <?php endif; ?>
                                         <button type="submit" name="save" class="btn btn-primary px-5">
                                             <i class="fas fa-save mr-2"></i> Save Basic Info
                                         </button>
@@ -405,6 +395,16 @@ document.getElementById('serverForm').addEventListener('submit', function(e) {
         }
     }
 });
+
+// delete button handler
+var deleteBtn = document.getElementById('deleteServerBtn');
+if (deleteBtn) {
+    deleteBtn.addEventListener('click', function() {
+        if (confirm('Are you sure you want to delete this server? This action cannot be undone.')) {
+            window.location.href = 'delete-server.php?server_id=' + <?php echo $server_id; ?>;
+        }
+    });
+}
 </script>
 
 <style>
