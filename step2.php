@@ -55,6 +55,7 @@ include 'config/dbcon.php';
     <!-- Content Header -->
     <div class="content-header">
         <div class="container-fluid">
+            <?php include 'message.php'; ?>
             <div class="row mb-2">
                 <div class="col-sm-8">
                     <h2 class="m-0">
@@ -132,23 +133,32 @@ include 'config/dbcon.php';
                                     chk.addEventListener('change', function(){ toggleInput('os' + name + 'Chk','os' + name + 'Input'); });
                                 }
                             });
-                            // show description textbox when a status is selected for each db type
-                            ['oracle','mysql','others'].forEach(function(type){
-                                var sel = document.querySelector('select[name="db_' + type + '_status"]');
-                                var upd = document.getElementById('db' + type.charAt(0).toUpperCase() + type.slice(1) + 'Update');
-                                if(sel && upd){
-                                    sel.addEventListener('change', function(){
-                                        if(this.value !== ''){
-                                            upd.style.display = 'block';
-                                        } else {
-                                            upd.style.display = 'none';
-                                            upd.value = '';
-                                        }
-                                    });
-                                    // initialize visibility
-                                    if(sel.value !== '') upd.style.display = 'block';
-                                }
-                            });
+                            // show/hide Other text field when Database is selected
+                            var databasesSelect = document.getElementById('databasesSelect');
+                            var databasesOther = document.getElementById('databasesOther');
+                            if (databasesSelect && databasesOther) {
+                                databasesSelect.addEventListener('change', function() {
+                                    if (this.value === 'Other') {
+                                        databasesOther.style.display = 'block';
+                                    } else {
+                                        databasesOther.style.display = 'none';
+                                        databasesOther.value = '';
+                                    }
+                                });
+                            }
+                            // show/hide Other text field when Server Type is selected
+                            var serverTypeSelect = document.querySelector('select[name="server_type"]');
+                            var serverTypeOther = document.querySelector('input[name="server_type_other"]');
+                            if (serverTypeSelect && serverTypeOther) {
+                                serverTypeSelect.addEventListener('change', function() {
+                                    if (this.value === 'Other') {
+                                        serverTypeOther.style.display = 'block';
+                                    } else {
+                                        serverTypeOther.style.display = 'none';
+                                        serverTypeOther.value = '';
+                                    }
+                                });
+                            }
                             // password policy toggle: show details block when any status selected
                             var policySel = document.getElementById('passwordPolicyStatus');
                             var policyDetails = document.getElementById('passwordPolicyDetails');
@@ -237,8 +247,34 @@ include 'config/dbcon.php';
                             <div class="form-group row mb-4">
                                 <label class="col-sm-3 col-form-label font-weight-bold">C. Used Databases:</label>
                                 <div class="col-sm-9">
-                                    <textarea class="form-control" name="databases" rows="2" 
-                                              placeholder="List databases installed&#10;e.g.:&#10;MySQL 8.0&#10;PostgreSQL 14&#10;Oracle 19c"><?php echo htmlspecialchars($server_data['databases'] ?? ''); ?></textarea>
+                                    <?php
+                                    // Determine the database value and other value
+                                    $db_value = '';
+                                    $db_other_value = '';
+                                    if (isset($server_data['installed_databases'])) {
+                                        if (strpos($server_data['installed_databases'], 'Other:') !== false) {
+                                            $db_value = 'Other';
+                                            $db_other_value = str_replace('Other: ', '', $server_data['installed_databases']);
+                                        } else {
+                                            $db_value = $server_data['installed_databases'];
+                                        }
+                                    }
+                                    ?>
+                                    <select class="form-control" name="databases" id="databasesSelect">
+                                        <option value="" <?php echo empty($db_value) ? 'selected' : ''; ?>>Select Database Type</option>
+                                        <option value="MySQL" <?php echo ($db_value === 'MySQL') ? 'selected' : ''; ?>>MySQL</option>
+                                        <option value="Oracle" <?php echo ($db_value === 'Oracle') ? 'selected' : ''; ?>>Oracle</option>
+                                        <option value="PostgreSQL" <?php echo ($db_value === 'PostgreSQL') ? 'selected' : ''; ?>>PostgreSQL</option>
+                                        <option value="SQL Server" <?php echo ($db_value === 'SQL Server') ? 'selected' : ''; ?>>SQL Server</option>
+                                        <option value="MariaDB" <?php echo ($db_value === 'MariaDB') ? 'selected' : ''; ?>>MariaDB</option>
+                                        <option value="MongoDB" <?php echo ($db_value === 'MongoDB') ? 'selected' : ''; ?>>MongoDB</option>
+                                        <option value="SQLite" <?php echo ($db_value === 'SQLite') ? 'selected' : ''; ?>>SQLite</option>
+                                        <option value="Other" <?php echo ($db_value === 'Other') ? 'selected' : ''; ?>>Other</option>
+                                    </select>
+                                    <input type="text" class="form-control mt-2" id="databasesOther" name="databases_other"
+                                           placeholder="If Other, please specify"
+                                           value="<?php echo htmlspecialchars($db_other_value); ?>"
+                                           style="display: <?php echo ($db_value === 'Other') ? 'block' : 'none'; ?>;">
                                 </div>
                             </div>
 
@@ -505,7 +541,7 @@ include 'config/dbcon.php';
                                             <i class="fas fa-trash-alt mr-1"></i> Delete Server
                                         </button>
                                         <?php endif; ?>
-                                        <button type="submit" name="save_step6" class="btn btn-primary px-5">
+                                        <button type="submit" name="save_step2" class="btn btn-primary px-5">
                                             <i class="fas fa-save mr-2"></i> Save Operating System
                                         </button>
                                         <button type="button" class="btn btn-info px-4 ml-2" onclick="window.location.href='step3.php'">

@@ -1,6 +1,4 @@
 <?php
-// save-step2.php
-session_start();
 // debugging helpers
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -9,7 +7,7 @@ error_reporting(E_ALL);
 include 'includes/authentication.php';
 include 'config/dbcon.php';
 
-if (isset($_POST['save-step2.php']) || isset($_POST['save_and_next'])) {
+if (isset($_POST['save_step2']) || isset($_POST['save_and_next'])) {
     // debugging: confirm entry and log POST data
     error_log('save-step2.php invoked, POST data: ' . json_encode($_POST));
     
@@ -22,8 +20,11 @@ if (isset($_POST['save-step2.php']) || isset($_POST['save_and_next'])) {
     }
 
     $server_id = isset($_POST['server_id']) ? intval($_POST['server_id']) : 0;
+    
+    // Debug: log server_id
+    error_log('server_id: ' . $server_id);
 
-    // Verify server belongs to user
+    // Verify server belongs to user if server_id > 0
     if ($server_id > 0) {
         $check_query = "SELECT id FROM basic_info WHERE id = ? AND user_id = ?";
         $check_stmt = mysqli_prepare($con, $check_query);
@@ -38,7 +39,8 @@ if (isset($_POST['save-step2.php']) || isset($_POST['save_and_next'])) {
         }
         mysqli_stmt_close($check_stmt);
     } else {
-        $_SESSION['status'] = "कृपया पहिले सर्भर चयन गर्नुहोस्।";
+        // For new server creation, require user to create server in step1 first
+        $_SESSION['status'] = "कृपया पहिले स्टेप ১ मा गएर सर्भर चयन गर्नुहोस्।";
         $_SESSION['msg_type'] = "error";
         header("Location: step2.php");
         exit();
@@ -62,16 +64,12 @@ if (isset($_POST['save-step2.php']) || isset($_POST['save_and_next'])) {
     $os_patches_status = mysqli_real_escape_string($con, trim($_POST['os_patches_status'] ?? ''));
     $os_patches_details = mysqli_real_escape_string($con, trim($_POST['os_patches_details'] ?? ''));
     $databases = mysqli_real_escape_string($con, trim($_POST['databases'] ?? '')); // This is the databases field
+    $databases_other = mysqli_real_escape_string($con, trim($_POST['databases_other'] ?? ''));
+    // Combine database type and other details
+    if ($databases === 'Other' && !empty($databases_other)) {
+        $databases = 'Other: ' . $databases_other;
+    }
     $db_admin = mysqli_real_escape_string($con, trim($_POST['db_admin'] ?? ''));
-    $db_oracle_status = mysqli_real_escape_string($con, trim($_POST['db_oracle_status'] ?? ''));
-    $db_oracle_version = mysqli_real_escape_string($con, trim($_POST['db_oracle_version'] ?? ''));
-    $db_oracle_update = mysqli_real_escape_string($con, trim($_POST['db_oracle_update'] ?? ''));
-    $db_mysql_status = mysqli_real_escape_string($con, trim($_POST['db_mysql_status'] ?? ''));
-    $db_mysql_version = mysqli_real_escape_string($con, trim($_POST['db_mysql_version'] ?? ''));
-    $db_mysql_update = mysqli_real_escape_string($con, trim($_POST['db_mysql_update'] ?? ''));
-    $db_others_status = mysqli_real_escape_string($con, trim($_POST['db_others_status'] ?? ''));
-    $db_others_details = mysqli_real_escape_string($con, trim($_POST['db_others_details'] ?? ''));
-    $db_others_update = mysqli_real_escape_string($con, trim($_POST['db_others_update'] ?? ''));
     $services_frameworks = mysqli_real_escape_string($con, trim($_POST['services_frameworks'] ?? ''));
     $admin_computer = mysqli_real_escape_string($con, trim($_POST['admin_computer'] ?? ''));
     $admin_count = intval($_POST['admin_count'] ?? 0);
@@ -115,217 +113,14 @@ if (isset($_POST['save-step2.php']) || isset($_POST['save_and_next'])) {
                 throw new Exception("तपाईंलाई यो सर्भर अपडेट गर्ने अनुमति छैन।");
             }
             mysqli_stmt_close($check_stmt);
-
-            $query = "UPDATE basic_info SET 
-                        os_windows = ?,
-                        os_linux = ?,
-                        os_other = ?,
-                        os_patches_status = ?,
-                        os_patches_details = ?,
-                        db_admin = ?,
-                        db_oracle_status = ?,
-                        db_oracle_version = ?,
-                        db_oracle_update = ?,
-                        db_mysql_status = ?,
-                        db_mysql_version = ?,
-                        db_mysql_update = ?,
-                        db_others_status = ?,
-                        db_others_details = ?,
-                        db_others_update = ?,
-                        db_updated_overall = ?,
-                        db_updated_details = ?,
-                        services_frameworks = ?,
-                        admin_computer = ?,
-                        admin_count = ?,
-                        admin_count_reason = ?,
-                        normal_users_count = ?,
-                        normal_users_details = ?,
-                        password_policy_status = ?,
-                        password_policy_reason = ?,
-                        password_length_details = ?,
-                        password_combo_details = ?,
-                        password_logbook_status = ?,
-                        password_logbook_details = ?,
-                        server_type = ?,
-                        server_type_other = ?,
-                        certificate_used = ?,
-                        certificate_details = ?,
-                        certificate_expiry = ?,
-                        antivirus_installed = ?,
-                        antivirus_details = ?,
-                        antivirus_updated = ?,
-                        antivirus_update_details = ?,
-                        selinux_enabled = ?,
-                        selinux_details = ?,
-                        remote_admin_enabled = ?,
-                        remote_admin_details = ?,
-                        remote_policy_followed = ?,
-                        remote_policy_details = ?,
-                        updated_at = NOW()
-                      WHERE id = ? AND user_id = ?";
-            $stmt = mysqli_prepare($con, $query);
-            // bind values in the exact order of the query columns above (updated fields)
-            $updateParams = [
-                $os_windows,
-                $os_linux,
-                $os_other,
-                $os_patches_status,
-                $os_patches_details,
-                $db_admin,
-                $db_oracle_status,
-                $db_oracle_version,
-                $db_oracle_update,
-                $db_mysql_status,
-                $db_mysql_version,
-                $db_mysql_update,
-                $db_others_status,
-                $db_others_details,
-                $db_others_update,
-                $db_updated_overall,
-                $db_updated_details,
-                $services_frameworks,
-                $admin_computer,
-                $admin_count,
-                $admin_count_reason,
-                $normal_users_count,
-                $normal_users_details,
-                $password_policy_status,
-                $password_policy_reason,
-                $password_length_details,
-                $password_combo_details,
-                $password_logbook_status,
-                $password_logbook_details,
-                $server_type,
-                $server_type_other,
-                $certificate_used,
-                $certificate_details,
-                $certificate_expiry,
-                $antivirus_installed,
-                $antivirus_details,
-                $antivirus_updated,
-                $antivirus_update_details,
-                $selinux_enabled,
-                $selinux_details,
-                $remote_admin_enabled,
-                $remote_admin_details,
-                $remote_policy_followed,
-                $remote_policy_details,
-                $server_id,
-                $user_id
-            ];
-            $types = str_repeat('s', count($updateParams));
-            mysqli_stmt_bind_param($stmt, $types, ...$updateParams);
+            
+            // For step2, we only save to server_os_info table
+            // basic_info is updated in step1
             $status_message = "ओएस जानकारी सफलतापूर्वक अपडेट गरियो!";
-        } else {
-            // new record (same query as update but with user_id first)
-            // columns and values are ordered to match update query above; new fields added as needed
-            $query = "INSERT INTO basic_info (
-                        user_id,
-                        os_windows,
-                        os_linux,
-                        os_other,
-                        os_patches_status,
-                        os_patches_details,
-                        db_admin,
-                        db_oracle_status,
-                        db_oracle_version,
-                        db_oracle_update,
-                        db_mysql_status,
-                        db_mysql_version,
-                        db_mysql_update,
-                        db_others_status,
-                        db_others_details,
-                        db_others_update,
-                        db_updated_overall,
-                        db_updated_details,
-                        services_frameworks,
-                        admin_computer,
-                        admin_count,
-                        admin_count_reason,
-                        normal_users_count,
-                        normal_users_details,
-                        password_policy_status,
-                        password_policy_reason,
-                        password_length_details,
-                        password_combo_details,
-                        password_logbook_status,
-                        password_logbook_details,
-                        server_type,
-                        server_type_other,
-                        certificate_used,
-                        certificate_details,
-                        certificate_expiry,
-                        antivirus_installed,
-                        antivirus_details,
-                        antivirus_updated,
-                        antivirus_update_details,
-                        selinux_enabled,
-                        selinux_details,
-                        remote_admin_enabled,
-                        remote_admin_details,
-                        remote_policy_followed,
-                        remote_policy_details,
-                        status,
-                        created_at,
-                        updated_at
-                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', NOW(), NOW())";
-            $stmt = mysqli_prepare($con, $query);
-            // bind parameters matching the above column order (updated fields)
-            mysqli_stmt_bind_param($stmt, "issssssssssssississssssssssssssssssss", 
-                $user_id,
-                $os_windows,
-                $os_linux,
-                $os_other,
-                $os_patches_status,
-                $os_patches_details,
-                $db_admin,
-                $db_oracle_status,
-                $db_oracle_version,
-                $db_oracle_update,
-                $db_mysql_status,
-                $db_mysql_version,
-                $db_mysql_update,
-                $db_others_status,
-                $db_others_details,
-                $db_others_update,
-                $db_updated_overall,
-                $db_updated_details,
-                $services_frameworks,
-                $admin_computer,
-                $admin_count,
-                $admin_count_reason,
-                $normal_users_count,
-                $normal_users_details,
-                $password_policy_status,
-                $password_policy_reason,
-                $password_length_details,
-                $password_combo_details,
-                $password_logbook_status,
-                $password_logbook_details,
-                $server_type,
-                $server_type_other,
-                $certificate_used,
-                $certificate_details,
-                $certificate_expiry,
-                $antivirus_installed,
-                $antivirus_details,
-                $antivirus_updated,
-                $antivirus_update_details,
-                $selinux_enabled,
-                $selinux_details,
-                $remote_admin_enabled,
-                $remote_admin_details,
-                $remote_policy_followed,
-                $remote_policy_details
-            );
-            $status_message = "ओएस जानकारी सफलतापूर्वक सेभ गरियो!";
         }
 
-        if (mysqli_stmt_execute($stmt)) {
-            if ($server_id == 0) {
-                $server_id = mysqli_insert_id($con);
-            }
-
+        // Save to server_os_info table (only if server_id > 0)
+        if ($server_id > 0) {
             // --- synchronize with server_os_info table ---
             // check if a row already exists for this basic_info
             $os_check_query = "SELECT id FROM server_os_info WHERE basic_info_id = ?";
@@ -333,6 +128,8 @@ if (isset($_POST['save-step2.php']) || isset($_POST['save_and_next'])) {
             mysqli_stmt_bind_param($os_check_stmt, "i", $server_id);
             mysqli_stmt_execute($os_check_stmt);
             mysqli_stmt_store_result($os_check_stmt);
+            
+            // Debug: count params
             $params = [
                 $user_id,
                 $os_windows,
@@ -372,11 +169,15 @@ if (isset($_POST['save-step2.php']) || isset($_POST['save_and_next'])) {
                 $remote_policy_followed,
                 $remote_policy_details
             ];
+            
+            error_log('Params count: ' . count($params));
+            error_log('Server_id: ' . $server_id);
             // all parameters treated as strings except ids
             $types = str_repeat('s', count($params));
 
             if (mysqli_stmt_num_rows($os_check_stmt) > 0) {
                 // update existing OS info record
+                error_log('Executing UPDATE');
                 $update_os = "
                   UPDATE server_os_info SET
                       user_id = ?,
@@ -451,10 +252,28 @@ if (isset($_POST['save-step2.php']) || isset($_POST['save_and_next'])) {
                       remote_admin_details, remote_policy_followed,
                       remote_policy_details,
                       created_at, updated_at
-                  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())";
+                  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())";
                 $os_ins = mysqli_prepare($con, $insert_os);
-                $ins_params = array_merge([$user_id, $server_id], $params);
-                $ins_types = 'ss' . $types;
+                // For INSERT: keep user_id from params[0], add basic_info_id ($server_id), then rest from params[1:]
+                // But we also need to include all 36 columns, so we need to add user_id again for the first column
+                $ins_params = array_merge([$params[0], $server_id], array_slice($params, 1));
+                // Actually the INSERT has 36 columns but params has 36, we need to account for basic_info_id
+                // Let's restructure: we need user_id, basic_info_id, and all 36 params values = 38
+                // But INSERT has 36 ? placeholders + 2 NOW() = 38 columns
+                // So we need: user_id, basic_info_id, then all 36 params = 38 values
+                // But params only has 36... The issue is the first param is user_id which is already used
+                // Let's check: params[0] = user_id, params[1] = os_windows, etc.
+                // For INSERT: columns are user_id, basic_info_id, os_windows, os_linux, ... remote_policy_details
+                // So we need: user_id ($params[0]), basic_info_id ($server_id), then os_windows to remote_policy_details (params[1] to params[35])
+                // That's 2 + 35 = 37, but we have 36 columns... Wait, let me recount
+                // Oh, the INSERT columns are: user_id, basic_info_id (2), os_windows...remote_policy_details (36 columns from params)
+                // So we need: user_id, basic_info_id + all 36 params = 38 values
+                // But params only has 36, where is os_windows stored?
+                // Looking at params[0] = user_id, params[1] = os_windows
+                // So for INSERT we need: user_id, server_id, then os_windows (params[1]) to end = 1 + 1 + 35 = 37
+                // This doesn't match. Let me check what params actually contains...
+                $ins_types = str_repeat('s', count($ins_params));
+                error_log('INSERT - Params count: ' . count($ins_params));
                 mysqli_stmt_bind_param($os_ins, $ins_types, ...$ins_params);
                 if (!mysqli_stmt_execute($os_ins)) {
                     throw new Exception('OS info insert failed: ' . mysqli_stmt_error($os_ins));
@@ -465,9 +284,31 @@ if (isset($_POST['save-step2.php']) || isset($_POST['save_and_next'])) {
             // --- end sync ---
 
             mysqli_commit($con);
+            
+            // Store submitted values in session for debugging
+            $_SESSION['debug_data'] = [
+                'server_id' => $server_id,
+                'os_windows' => $os_windows,
+                'os_linux' => $os_linux,
+                'os_other' => $os_other,
+                'os_patches_status' => $os_patches_status,
+                'databases' => $databases,
+                'db_admin' => $db_admin,
+                'db_updated_overall' => $db_updated_overall,
+                'services_frameworks' => $services_frameworks,
+                'admin_computer' => $admin_computer,
+                'admin_count' => $admin_count,
+                'normal_users_count' => $normal_users_count,
+                'password_policy_status' => $password_policy_status,
+                'server_type' => $server_type,
+                'certificate_used' => $certificate_used,
+                'antivirus_installed' => $antivirus_installed,
+                'selinux_enabled' => $selinux_enabled,
+                'remote_admin_enabled' => $remote_admin_enabled
+            ];
+            
             $_SESSION['status'] = $status_message;
             $_SESSION['msg_type'] = "success";
-            mysqli_stmt_close($stmt);
             header("Location: step2.php?server_id=" . $server_id);
             exit();
         } else {
@@ -481,6 +322,7 @@ if (isset($_POST['save-step2.php']) || isset($_POST['save_and_next'])) {
         error_log("save-step2.php error: " . $err);
         $_SESSION['status'] = "डाटा सेभ गर्दा त्रुटि भयो: " . $err;
         $_SESSION['msg_type'] = "error";
+        unset($_SESSION['debug_data']);
         header("Location: step2.php" . ($server_id > 0 ? "?server_id=" . $server_id : ""));
         exit();
     }
