@@ -149,22 +149,6 @@ include 'config/dbcon.php';
                                     if(sel.value !== '') upd.style.display = 'block';
                                 }
                             });
-                            // overall database update toggle: only show details when Yes is chosen
-                            var overallSel = document.getElementById('dbUpdatedOverall');
-                            var overallDetails = document.getElementById('dbUpdatedDetails');
-                            if(overallSel && overallDetails){
-                                overallSel.addEventListener('change', function(){
-                                    if(this.value === 'Yes'){
-                                        overallDetails.style.display = 'block';
-                                    } else {
-                                        overallDetails.style.display = 'none';
-                                        overallDetails.value = '';
-                                    }
-                                });
-                                // initialize visibility
-                                if(overallSel.value === 'Yes') overallDetails.style.display = 'block';
-                                else overallDetails.style.display = 'none';
-                            }
                             // password policy toggle: show details block when any status selected
                             var policySel = document.getElementById('passwordPolicyStatus');
                             var policyDetails = document.getElementById('passwordPolicyDetails');
@@ -271,16 +255,17 @@ include 'config/dbcon.php';
                             <!-- E. Are the database updated? (with sub-items) -->
                             <div class="form-group row mb-4">
                                 <label class="col-sm-3 col-form-label font-weight-bold">E. Are the database updated?</label>
-                                <div class="col-sm-9">
+                                <div class="col-sm-3">
                                     <select class="form-control mb-2" name="db_updated_overall" id="dbUpdatedOverall">
                                         <option value="" <?php echo empty($server_data['db_updated_overall']) ? 'selected' : ''; ?>>-- Select --</option>
                                         <option value="Yes" <?php echo (isset($server_data['db_updated_overall']) && $server_data['db_updated_overall']==='Yes') ? 'selected' : ''; ?>>Yes</option>
                                         <option value="No" <?php echo (isset($server_data['db_updated_overall']) && $server_data['db_updated_overall']==='No') ? 'selected' : ''; ?>>No</option>
                                     </select>
+                                </div>
+                                <div class="col-sm-6">
                                     <input type="text" class="form-control" id="dbUpdatedDetails" name="db_updated_details"
-                                           placeholder="If Yes, describe what was updated"
-                                           value="<?php echo htmlspecialchars($server_data['db_updated_details'] ?? ''); ?>"
-                                           style="display:<?php echo empty($server_data['db_updated_details']) ? 'none' : 'block'; ?>;">
+                                           placeholder="Enter update details or reason"
+                                           value="<?php echo htmlspecialchars($server_data['db_updated_details'] ?? ''); ?>">
                                 </div>
                             </div>
 

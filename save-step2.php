@@ -9,15 +9,10 @@ error_reporting(E_ALL);
 include 'includes/authentication.php';
 include 'config/dbcon.php';
 
-if (isset($_POST['save-step2.php'])) {
+if (isset($_POST['save-step2.php']) || isset($_POST['save_and_next'])) {
     // debugging: confirm entry and log POST data
     error_log('save-step2.php invoked, POST data: ' . json_encode($_POST));
-    echo '<!-- debug: save-step2 POST received -->';
-    // if debug flag is provided in URL, dump POST and stop
-    if (isset($_GET['dbg'])) {
-        echo '<h3>POST data:</h3><pre>' . htmlspecialchars(print_r($_POST, true)) . '</pre>';
-        exit();
-    }
+    
     $user_id = isset($_SESSION['auth_user']['user_id']) ? intval($_SESSION['auth_user']['user_id']) : 0;
     if ($user_id == 0) {
         $_SESSION['status'] = "कृपया लग इन गर्नुहोस्।";
@@ -27,6 +22,27 @@ if (isset($_POST['save-step2.php'])) {
     }
 
     $server_id = isset($_POST['server_id']) ? intval($_POST['server_id']) : 0;
+
+    // Verify server belongs to user
+    if ($server_id > 0) {
+        $check_query = "SELECT id FROM basic_info WHERE id = ? AND user_id = ?";
+        $check_stmt = mysqli_prepare($con, $check_query);
+        mysqli_stmt_bind_param($check_stmt, "ii", $server_id, $user_id);
+        mysqli_stmt_execute($check_stmt);
+        mysqli_stmt_store_result($check_stmt);
+        if (mysqli_stmt_num_rows($check_stmt) == 0) {
+            $_SESSION['status'] = "तपाईंलाई यो सर्भर अपडेट गर्ने अनुमति छैन।";
+            $_SESSION['msg_type'] = "error";
+            header("Location: step2.php");
+            exit();
+        }
+        mysqli_stmt_close($check_stmt);
+    } else {
+        $_SESSION['status'] = "कृपया पहिले सर्भर चयन गर्नुहोस्।";
+        $_SESSION['msg_type'] = "error";
+        header("Location: step2.php");
+        exit();
+    }
 
     // collect and sanitize all OS-related form values
     // operating system checkbox selections
@@ -39,12 +55,13 @@ if (isset($_POST['save-step2.php'])) {
     if (!$os_windows_chk) $os_windows = '';
     if (!$os_linux_chk) $os_linux = '';
     if (!$os_other_chk) $os_other = '';
-    // overall database update status
+    
+    // database update status
     $db_updated_overall = mysqli_real_escape_string($con, trim($_POST['db_updated_overall'] ?? ''));
     $db_updated_details = mysqli_real_escape_string($con, trim($_POST['db_updated_details'] ?? ''));
     $os_patches_status = mysqli_real_escape_string($con, trim($_POST['os_patches_status'] ?? ''));
     $os_patches_details = mysqli_real_escape_string($con, trim($_POST['os_patches_details'] ?? ''));
-    $databases = mysqli_real_escape_string($con, trim($_POST['databases'] ?? ''));
+    $databases = mysqli_real_escape_string($con, trim($_POST['databases'] ?? '')); // This is the databases field
     $db_admin = mysqli_real_escape_string($con, trim($_POST['db_admin'] ?? ''));
     $db_oracle_status = mysqli_real_escape_string($con, trim($_POST['db_oracle_status'] ?? ''));
     $db_oracle_version = mysqli_real_escape_string($con, trim($_POST['db_oracle_version'] ?? ''));
