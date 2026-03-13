@@ -1,22 +1,64 @@
 <?php
-// step9-network-security.php
+// step4-network-security.php
 include 'includes/authentication.php';
+include 'config/dbcon.php';
+
+// Get logged in user ID from session
+$user_id = isset($_SESSION['auth_user']['user_id']) ? intval($_SESSION['auth_user']['user_id']) : 0;
+
+// Simple initialization
+$server_id = isset($_GET['server_id']) ? intval($_GET['server_id']) : 0;
+$network_data = [];
+
+// Fetch all servers for this user (for dropdown)
+$servers_list = [];
+if ($user_id > 0) {
+    $servers_query = "SELECT id, server_name FROM basic_info WHERE user_id = ? ORDER BY server_name";
+    $servers_stmt = $con->prepare($servers_query);
+    $servers_stmt->bind_param("i", $user_id);
+    $servers_stmt->execute();
+    $servers_result = $servers_stmt->get_result();
+    while ($row = $servers_result->fetch_assoc()) {
+        $servers_list[] = $row;
+    }
+    $servers_stmt->close();
+}
+
+// If a specific server is selected, fetch its details (including network security info)
+if ($server_id > 0) {
+    // Verify server belongs to user
+    $check_query = "SELECT id FROM basic_info WHERE id = ? AND user_id = ?";
+    $check_stmt = $con->prepare($check_query);
+    $check_stmt->bind_param("ii", $server_id, $user_id);
+    $check_stmt->execute();
+    $check_result = $check_stmt->get_result();
+    if ($check_result->num_rows == 0) {
+        $_SESSION['error'] = "Server not found or you don't have permission to access it";
+        header("Location: step4.php");
+        exit();
+    }
+    $check_stmt->close();
+    
+    // Fetch network security info (only if table exists)
+    $table_exists = mysqli_num_rows(mysqli_query($con, "SHOW TABLES LIKE 'network_security'")) > 0;
+    if ($table_exists) {
+        $query = "SELECT * FROM network_security WHERE server_id = ?";
+        $stmt = $con->prepare($query);
+        $stmt->bind_param("i", $server_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $network_data = $row;
+        }
+        $stmt->close();
+    }
+}
+
+// include layout after logic
 include 'includes/header.php';
 include 'includes/topbar.php';
 include 'includes/sidebar.php';
 include 'config/dbcon.php';
-
-// Fetch existing data if editing
-$server_id = isset($_GET['server_id']) ? $_GET['server_id'] : 0;
-$network_data = [];
-if ($server_id) {
-    $query = "SELECT * FROM network_security WHERE server_id = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $server_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $network_data = $result->fetch_assoc();
-}
 ?>
 
 <!-- Content Wrapper -->
@@ -24,6 +66,7 @@ if ($server_id) {
     <!-- Content Header -->
     <div class="content-header">
         <div class="container-fluid">
+            <?php include 'message.php'; ?>
             <div class="row mb-2">
                 <div class="col-sm-6">
                     <h2 class="m-0">
@@ -46,9 +89,33 @@ if ($server_id) {
         <div class="container-fluid">
             <div class="card">
                 <div class="card-body">
-                    <form method="POST" action="save-step9.php" id="networkSecurityForm">
+                    <form method="POST" action="save-step4.php" id="networkSecurityForm">
                         <input type="hidden" name="server_id" value="<?php echo $server_id; ?>">
-                        
+
+                        <!-- Server Selection Dropdown (if there are existing servers) -->
+                        <?php if (!empty($servers_list)): ?>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            <strong>Select existing server:</strong>
+                        </div>
+                        <div class="form-group row mb-4">
+                            <label class="col-sm-3 col-form-label font-weight-bold">
+                                Select Server:
+                            </label>
+                            <div class="col-sm-9">
+                                <select class="form-control" id="server_selector" onchange="loadServer(this.value)">
+                                    <option value="">-- Select Server --</option>
+                                    <?php foreach ($servers_list as $server): ?>
+                                        <option value="<?php echo $server['id']; ?>" <?php echo ($server_id == $server['id']) ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($server['server_name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if ($server_id > 0): ?>
                         <!-- Network Security Section -->
                         <div class="security-block p-4 border rounded">
                             
@@ -58,23 +125,15 @@ if ($server_id) {
                                     A. Firewall:
                                 </label>
                                 <div class="col-sm-9">
-                                    <div class="mb-3">
-                                        <div class="custom-control custom-radio custom-control-inline">
-                                            <input type="radio" class="custom-control-input" name="firewall_status" id="firewallYes" value="Yes" <?php echo (isset($network_data['firewall_status']) && $network_data['firewall_status'] == 'Yes') ? 'checked' : ''; ?>>
-                                            <label class="custom-control-label" for="firewallYes">Yes</label>
-                                        </div>
-                                        <div class="custom-control custom-radio custom-control-inline">
-                                            <input type="radio" class="custom-control-input" name="firewall_status" id="firewallNo" value="No" <?php echo (isset($network_data['firewall_status']) && $network_data['firewall_status'] == 'No') ? 'checked' : ''; ?>>
-                                            <label class="custom-control-label" for="firewallNo">No</label>
-                                        </div>
-                                        <div class="custom-control custom-radio custom-control-inline">
-                                            <input type="radio" class="custom-control-input" name="firewall_status" id="firewallNA" value="N/A" <?php echo (isset($network_data['firewall_status']) && $network_data['firewall_status'] == 'N/A') ? 'checked' : ''; ?>>
-                                            <label class="custom-control-label" for="firewallNA">N/A</label>
-                                        </div>
-                                    </div>
+                                    <select class="form-control mb-3" name="firewall_status" id="firewallStatus" onchange="toggleFirewallDetails()">
+                                        <option value="">-- Select --</option>
+                                        <option value="Yes" <?php echo (isset($network_data['firewall_status']) && $network_data['firewall_status'] == 'Yes') ? 'selected' : ''; ?>>Yes</option>
+                                        <option value="No" <?php echo (isset($network_data['firewall_status']) && $network_data['firewall_status'] == 'No') ? 'selected' : ''; ?>>No</option>
+                                        <option value="N/A" <?php echo (isset($network_data['firewall_status']) && $network_data['firewall_status'] == 'N/A') ? 'selected' : ''; ?>>N/A</option>
+                                    </select>
                                     
-                                    <!-- Firewall Details -->
-                                    <div class="mt-3 p-3 bg-light rounded">
+                                    <!-- Firewall Details (show when Yes is selected) -->
+                                    <div class="mt-3 p-3 bg-light rounded" id="firewallYesDetails" style="display: none;">
                                         <label class="font-weight-bold">Firewall Details:</label>
                                         <div class="row">
                                             <div class="col-md-6 mb-2">
@@ -86,6 +145,13 @@ if ($server_id) {
                                         </div>
                                         <textarea class="form-control mt-2" name="firewall_detail" rows="2" 
                                                   placeholder="Additional firewall configuration details..."><?php echo htmlspecialchars($network_data['firewall_detail'] ?? ''); ?></textarea>
+                                    </div>
+                                    
+                                    <!-- If No Firewall - Show reason field -->
+                                    <div class="mt-3 p-3 bg-light rounded" id="firewallNoDetails" style="display: none;">
+                                        <label class="font-weight-bold">If No Firewall, Please Explain:</label>
+                                        <textarea class="form-control" name="firewall_no_reason" rows="3" 
+                                                  placeholder="Explain why there is no firewall (e.g., alternative protection, cloud-based, etc.)"><?php echo htmlspecialchars($network_data['firewall_no_reason'] ?? ''); ?></textarea>
                                     </div>
                                 </div>
                             </div>
@@ -100,20 +166,12 @@ if ($server_id) {
                                     <!-- B1. Multivendor -->
                                     <div class="mb-4 p-3 bg-light rounded">
                                         <label class="font-weight-bold">B1. Multivendor:</label>
-                                        <div class="mb-2">
-                                            <div class="custom-control custom-radio custom-control-inline">
-                                                <input type="radio" class="custom-control-input" name="multivendor_status" id="multiYes" value="Yes" <?php echo (isset($network_data['multivendor_status']) && $network_data['multivendor_status'] == 'Yes') ? 'checked' : ''; ?>>
-                                                <label class="custom-control-label" for="multiYes">Yes</label>
-                                            </div>
-                                            <div class="custom-control custom-radio custom-control-inline">
-                                                <input type="radio" class="custom-control-input" name="multivendor_status" id="multiNo" value="No" <?php echo (isset($network_data['multivendor_status']) && $network_data['multivendor_status'] == 'No') ? 'checked' : ''; ?>>
-                                                <label class="custom-control-label" for="multiNo">No</label>
-                                            </div>
-                                            <div class="custom-control custom-radio custom-control-inline">
-                                                <input type="radio" class="custom-control-input" name="multivendor_status" id="multiNA" value="N/A" <?php echo (isset($network_data['multivendor_status']) && $network_data['multivendor_status'] == 'N/A') ? 'checked' : ''; ?>>
-                                                <label class="custom-control-label" for="multiNA">N/A</label>
-                                            </div>
-                                        </div>
+                                        <select class="form-control mb-2" name="multivendor_status">
+                                            <option value="">-- Select --</option>
+                                            <option value="Yes" <?php echo (isset($network_data['multivendor_status']) && $network_data['multivendor_status'] == 'Yes') ? 'selected' : ''; ?>>Yes</option>
+                                            <option value="No" <?php echo (isset($network_data['multivendor_status']) && $network_data['multivendor_status'] == 'No') ? 'selected' : ''; ?>>No</option>
+                                            <option value="N/A" <?php echo (isset($network_data['multivendor_status']) && $network_data['multivendor_status'] == 'N/A') ? 'selected' : ''; ?>>N/A</option>
+                                        </select>
                                         
                                         <div class="row">
                                             <div class="col-md-6">
@@ -125,20 +183,12 @@ if ($server_id) {
                                     <!-- B2. Cascaded -->
                                     <div class="mb-2 p-3 bg-light rounded">
                                         <label class="font-weight-bold">B2. Cascaded:</label>
-                                        <div class="mb-2">
-                                            <div class="custom-control custom-radio custom-control-inline">
-                                                <input type="radio" class="custom-control-input" name="cascaded_status" id="cascYes" value="Yes" <?php echo (isset($network_data['cascaded_status']) && $network_data['cascaded_status'] == 'Yes') ? 'checked' : ''; ?>>
-                                                <label class="custom-control-label" for="cascYes">Yes</label>
-                                            </div>
-                                            <div class="custom-control custom-radio custom-control-inline">
-                                                <input type="radio" class="custom-control-input" name="cascaded_status" id="cascNo" value="No" <?php echo (isset($network_data['cascaded_status']) && $network_data['cascaded_status'] == 'No') ? 'checked' : ''; ?>>
-                                                <label class="custom-control-label" for="cascNo">No</label>
-                                            </div>
-                                            <div class="custom-control custom-radio custom-control-inline">
-                                                <input type="radio" class="custom-control-input" name="cascaded_status" id="cascNA" value="N/A" <?php echo (isset($network_data['cascaded_status']) && $network_data['cascaded_status'] == 'N/A') ? 'checked' : ''; ?>>
-                                                <label class="custom-control-label" for="cascNA">N/A</label>
-                                            </div>
-                                        </div>
+                                        <select class="form-control mb-2" name="cascaded_status">
+                                            <option value="">-- Select --</option>
+                                            <option value="Yes" <?php echo (isset($network_data['cascaded_status']) && $network_data['cascaded_status'] == 'Yes') ? 'selected' : ''; ?>>Yes</option>
+                                            <option value="No" <?php echo (isset($network_data['cascaded_status']) && $network_data['cascaded_status'] == 'No') ? 'selected' : ''; ?>>No</option>
+                                            <option value="N/A" <?php echo (isset($network_data['cascaded_status']) && $network_data['cascaded_status'] == 'N/A') ? 'selected' : ''; ?>>N/A</option>
+                                        </select>
                                         
                                         <div class="row">
                                             <div class="col-md-6">
@@ -405,8 +455,11 @@ if ($server_id) {
                                         <button type="button" class="btn btn-info px-4 mr-2" onclick="window.location.href='step3.php'">
                                             <i class="fas fa-arrow-left mr-1"></i> Previous Step
                                         </button>
-                                        <button type="submit" name="save_step6" class="btn btn-primary px-5">
+                                        <button type="submit" name="save_step4" class="btn btn-primary px-5">
                                             <i class="fas fa-save mr-2"></i> Save Network Security
+                                        </button>
+                                        <button type="submit" name="save_and_next" class="btn btn-success px-4 ml-2">
+                                            Save & Next <i class="fas fa-arrow-right ml-1"></i>
                                         </button>
                                         <button type="button" class="btn btn-info px-4 ml-2" onclick="window.location.href='step5.php'">
                                             Next Step <i class="fas fa-arrow-right ml-1"></i>
@@ -418,9 +471,44 @@ if ($server_id) {
                     </form>
                 </div>
             </div>
+            <?php endif; ?>
         </div>
     </section>
 </div>
+
+<script>
+function loadServer(serverId) {
+    if (serverId) {
+        window.location.href = 'step4.php?server_id=' + serverId;
+    } else {
+        window.location.href = 'step4.php';
+    }
+}
+
+function toggleFirewallDetails() {
+    var status = document.getElementById('firewallStatus');
+    var yesDetails = document.getElementById('firewallYesDetails');
+    var noDetails = document.getElementById('firewallNoDetails');
+    
+    if (status && yesDetails && noDetails) {
+        if (status.value === 'Yes') {
+            yesDetails.style.display = 'block';
+            noDetails.style.display = 'none';
+        } else if (status.value === 'No') {
+            yesDetails.style.display = 'none';
+            noDetails.style.display = 'block';
+        } else {
+            yesDetails.style.display = 'none';
+            noDetails.style.display = 'none';
+        }
+    }
+}
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', function() {
+    toggleFirewallDetails();
+});
+</script>
 
 <style>
 .security-block {
